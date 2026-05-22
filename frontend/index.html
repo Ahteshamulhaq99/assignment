@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Search Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d27;
+            --bg-card: #21242f;
+            --bg-hover: #2a2d3a;
+            --accent: #6c63ff;
+            --accent-hover: #5a52e0;
+            --accent-glow: rgba(108, 99, 255, 0.25);
+            --text-primary: #e8e9ed;
+            --text-secondary: #9196a8;
+            --text-muted: #5f6478;
+            --border: #2e3142;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+        .status-dot.offline { background: var(--danger); animation: none; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            position: sticky;
+            top: 80px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+        }
+        .card-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        /* Upload Area */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+        .upload-zone .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .upload-zone p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .upload-zone .hint {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.4rem;
+        }
+        .upload-zone input { display: none; }
+
+        /* Preview */
+        .preview-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .preview-container.active { display: flex; }
+        .preview-img {
+            max-width: 100%;
+            max-height: 220px;
+            border-radius: 8px;
+            object-fit: contain;
+            border: 1px solid var(--border);
+        }
+        .preview-name {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+        .btn-clear {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+        .btn-clear:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* Controls */
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .control-group label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+        .control-group label span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* Search Button */
+        .btn-search {
+            width: 100%;
+            padding: 0.85rem;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 0.02em;
+        }
+        .btn-search:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+        .btn-search:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Index Status */
+        .index-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .stat-item {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+        }
+        .stat-item .stat-val {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .stat-item .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Results Panel */
+        .results-panel {
+            min-height: 400px;
+        }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+        .results-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .latency-badge {
+            font-size: 0.7rem;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 350px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+        .empty-state p { font-size: 0.85rem; }
+
+        /* Loading */
+        .loading-overlay {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            gap: 1rem;
+        }
+        .loading-overlay.active { display: flex; }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Result Cards */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .result-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .result-card .img-wrapper {
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .result-card .img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+        .result-card:hover .img-wrapper img {
+            transform: scale(1.05);
+        }
+        .result-card .card-body {
+            padding: 0.85rem;
+        }
+        .result-card .score-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .score-bar .score-track {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .score-bar .score-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--success));
+            transition: width 0.6s ease;
+        }
+        .score-bar .score-text {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 40px;
+            text-align: right;
+        }
+        .result-card .categories {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        .categories .cat-tag {
+            background: var(--bg-secondary);
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+        }
+        .result-card .description {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .result-card .explanation {
+            font-size: 0.7rem;
+            color: var(--success);
+            font-style: italic;
+            border-top: 1px solid var(--border);
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+            line-height: 1.5;
+        }
+
+        /* Error toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--danger);
+            color: #fff;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(248,113,113,0.3);
+            transform: translateY(120%);
+            transition: transform 0.3s ease;
+            z-index: 200;
+        }
+        .toast.show { transform: translateY(0); }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            .sidebar { position: static; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>⚡ Visual Search Engine</h1>
+    <div class="status-badge" id="statusBadge">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connecting...</span>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-title">Query Image</div>
+            <div class="upload-zone" id="uploadZone">
+                <div class="icon">📸</div>
+                <p>Drop an image here or click to upload</p>
+                <div class="hint">JPG, PNG — any size</div>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+            <div class="preview-container" id="previewContainer">
+                <img class="preview-img" id="previewImg" alt="Preview">
+                <span class="preview-name" id="previewName"></span>
+                <button class="btn-clear" id="btnClear">✕ Remove</button>
+            </div>
+        </div>
+
+        <!-- Controls Card -->
+        <div class="card">
+            <div class="card-title">Search Settings</div>
+            <div class="control-group">
+                <label>Results to return <span id="topKVal">5</span></label>
+                <input type="range" id="topKSlider" min="1" max="20" value="5">
+            </div>
+        </div>
+
+        <!-- Search Button -->
+        <button class="btn-search" id="btnSearch" disabled>🔍  Search Similar Products</button>
+
+        <!-- Index Status Card -->
+        <div class="card">
+            <div class="card-title">Index Status</div>
+            <div class="index-stats" id="indexStats">
+                <div class="stat-item">
+                    <div class="stat-val" id="statItems">—</div>
+                    <div class="stat-label">Items Indexed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="statDim">—</div>
+                    <div class="stat-label">Embedding Dim</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="statType">—</div>
+                    <div class="stat-label">Index Type</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="statMem">—</div>
+                    <div class="stat-label">Memory (MB)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-panel">
+        <div class="results-header">
+            <h2>Search Results</h2>
+            <span class="latency-badge" id="latencyBadge" style="display:none"></span>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <div class="icon">🔎</div>
+            <p>Upload a fashion image and hit search<br>to find visually similar products</p>
+        </div>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Searching catalogue...</p>
+        </div>
+
+        <div class="results-grid" id="resultsGrid"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const API = window.location.origin;
+
+    // DOM refs
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImg = document.getElementById('previewImg');
+    const previewName = document.getElementById('previewName');
+    const btnClear = document.getElementById('btnClear');
+    const topKSlider = document.getElementById('topKSlider');
+    const topKVal = document.getElementById('topKVal');
+    const btnSearch = document.getElementById('btnSearch');
+    const emptyState = document.getElementById('emptyState');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const resultsGrid = document.getElementById('resultsGrid');
+    const latencyBadge = document.getElementById('latencyBadge');
+    const toast = document.getElementById('toast');
+
+    let selectedFile = null;
+
+    // --- Status ---
+    async function fetchStatus() {
+        try {
+            const res = await fetch(`${API}/index/status`);
+            const data = await res.json();
+            document.getElementById('statusDot').classList.remove('offline');
+            document.getElementById('statusText').textContent = data.index_loaded ? 'Online' : 'No Index';
+            document.getElementById('statItems').textContent = data.items_indexed?.toLocaleString() ?? '—';
+            document.getElementById('statDim').textContent = data.embedding_dimension ?? '—';
+            document.getElementById('statType').textContent = data.configured_type?.toUpperCase() ?? '—';
+            document.getElementById('statMem').textContent = data.approximate_memory_mb ?? '—';
+        } catch {
+            document.getElementById('statusDot').classList.add('offline');
+            document.getElementById('statusText').textContent = 'Offline';
+        }
+    }
+    fetchStatus();
+    setInterval(fetchStatus, 15000);
+
+    // --- Upload ---
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', e => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+    function handleFile(file) {
+        if (!file.type.startsWith('image/')) { showToast('Please select an image file'); return; }
+        selectedFile = file;
+        const reader = new FileReader();
+        reader.onload = e => {
+            previewImg.src = e.target.result;
+            previewName.textContent = file.name;
+            uploadZone.style.display = 'none';
+            previewContainer.classList.add('active');
+            btnSearch.disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    btnClear.addEventListener('click', () => {
+        selectedFile = null;
+        fileInput.value = '';
+        uploadZone.style.display = '';
+        previewContainer.classList.remove('active');
+        btnSearch.disabled = true;
+    });
+
+    // --- Slider ---
+    topKSlider.addEventListener('input', () => { topKVal.textContent = topKSlider.value; });
+
+    // --- Search ---
+    btnSearch.addEventListener('click', async () => {
+        if (!selectedFile) return;
+
+        emptyState.style.display = 'none';
+        resultsGrid.innerHTML = '';
+        loadingOverlay.classList.add('active');
+        latencyBadge.style.display = 'none';
+        btnSearch.disabled = true;
+
+        const form = new FormData();
+        form.append('file', selectedFile);
+        form.append('top_k', topKSlider.value);
+
+        try {
+            const res = await fetch(`${API}/search`, { method: 'POST', body: form });
+            if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Search failed'); }
+            const data = await res.json();
+            renderResults(data);
+        } catch (err) {
+            showToast(err.message);
+            emptyState.style.display = '';
+        } finally {
+            loadingOverlay.classList.remove('active');
+            btnSearch.disabled = false;
+        }
+    });
+
+    // --- Render ---
+    function renderResults(data) {
+        const { results, query_metadata } = data;
+
+        // Latency
+        const lat = query_metadata.latency;
+        latencyBadge.textContent = `⏱ ${lat.total_pipeline_ms.toFixed(0)}ms total · ${lat.vector_search_ms.toFixed(1)}ms search`;
+        latencyBadge.style.display = '';
+
+        if (!results.length) {
+            emptyState.style.display = '';
+            return;
+        }
+
+        resultsGrid.innerHTML = results.map((r, i) => {
+            const score = (r.similarity_score * 100).toFixed(1);
+            const cats = [r.categories.level1, r.categories.level2, r.categories.level3].filter(Boolean);
+            return `
+                <div class="result-card" style="animation: fadeUp 0.4s ${i * 0.06}s both">
+                    <div class="img-wrapper">
+                        <img src="${API}${r.image_url}" alt="${r.description || 'Product'}" loading="lazy"
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=color:var(--text-muted)>No image</span>'">
+                    </div>
+                    <div class="card-body">
+                        <div class="score-bar">
+                            <div class="score-track"><div class="score-fill" style="width:${score}%"></div></div>
+                            <div class="score-text">${score}%</div>
+                        </div>
+                        <div class="categories">${cats.map(c => `<span class="cat-tag">${c}</span>`).join('')}</div>
+                        <div class="description">${r.description || '—'}</div>
+                        <div class="explanation">${r.explanation || ''}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // --- Toast ---
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3500);
+    }
+
+    // Fade-up animation
+    const style = document.createElement('style');
+    style.textContent = `@keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }`;
+    document.head.appendChild(style);
+</script>
+
+</body>
+</html>
